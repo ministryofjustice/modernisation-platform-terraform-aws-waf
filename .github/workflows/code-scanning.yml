@@ -1,0 +1,96 @@
+name: Secure Code Analysis
+on:
+  schedule:
+    - cron: '35 1 * * *'
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+permissions:
+  contents: read
+jobs:
+  tflint:
+    runs-on: '${{ matrix.os }}'
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          token: '${{ secrets.GITHUB_TOKEN }}'
+          fetch-depth: 0
+      - name: Cache plugin dir
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.tflint.d/plugins
+          key: '${{ matrix.os }}-tflint-${{ hashFiles(''.tflint.hcl'') }}'
+      - uses: terraform-linters/setup-tflint@ae78205cfffec9e8d93fd2b3115c7e9d3166d4b6 # v5.0.0
+        name: Setup TFLint
+        with:
+          tflint_version: latest
+      - name: Init TFLint
+        run: tflint --init
+      - name: Run TFLint
+        run: tflint --disable-rule=terraform_unused_declarations --format sarif > tflint.sarif
+      - name: Upload SARIF file
+        if: success() || failure()
+        uses: github/codeql-action/upload-sarif@3599b3baa15b485a2e49ef411a7a4bb2452e7f93 # v3.30.5
+        with:
+          sarif_file: tflint.sarif
+  trivy:
+    permissions:
+      contents: read # for actions/checkout to fetch code
+      security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
+      actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status.
+    name: trivy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Run Trivy vulnerability scanner in repo mode
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8
+        with:
+          scan-type: 'fs'
+          scanners: misconfig,vuln,secret
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          trivyignores: ./.trivyignore.yaml
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        if: success() || failure()
+        uses: github/codeql-action/upload-sarif@3599b3baa15b485a2e49ef411a7a4bb2452e7f93 # v3.30.5
+        with:
+          sarif_file: 'trivy-results.sarif'
+  checkov:
+    name: checkov
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          token: '${{ secrets.GITHUB_TOKEN }}'
+          fetch-depth: 0
+      - name: Run Checkov action
+        id: checkov
+        uses: bridgecrewio/checkov-action@4f9f1bef9f759c19c966f39c0638ea427d776f4d # v12.3060.0
+        with:
+          directory: ./
+          framework: terraform
+          output_file_path: ./checkov.sarif
+          output_format: sarif
+          skip_check: CKV_GIT_1,CKV_AWS_126,CKV2_AWS_38,CKV2_AWS_39
+      - name: Upload SARIF file
+        if: success() || failure()
+        uses: github/codeql-action/upload-sarif@3599b3baa15b485a2e49ef411a7a4bb2452e7f93 # v3.30.5
+        with:
+          sarif_file: ./checkov.sarif
