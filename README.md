@@ -27,7 +27,7 @@ For `enable_ddos_protection` it covers what is currently offered in the FM modul
 ```hcl
 
 module "waf" {
-  source                   = "git::https://github.com/ministryofjustice/modernisation-platform-terraform-waf?ref=ecc855f212ce6a2f36a7a77e78c42d968f15ee8d"
+  source                   = "git::https://github.com/ministryofjustice/modernisation-platform-terraform-aws-waf"
   enable_pagerduty_integration = true
   enable_ddos_protection = true
   ddos_rate_limit        = 5000
