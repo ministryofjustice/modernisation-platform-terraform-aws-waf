@@ -8,6 +8,7 @@
 
 ### 2. FM-Managed Rule Conflict for MOJ Teams - Solved with latest update
 
+### 3. This module was created from a previous module here - https://github.com/ministryofjustice/modernisation-platform-terraform-waf
 
 ---
 
