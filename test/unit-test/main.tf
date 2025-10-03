@@ -17,6 +17,13 @@ module "waf" {
     AWSManagedRulesAnonymousIpList       = false
     AWSManagedRulesBotControlRuleSet     = false
   }
+
+  managed_rule_priorities = {
+    AWSManagedRulesSQLiRuleSet           = 5
+    AWSManagedRulesKnownBadInputsRuleSet = 6
+    AWSManagedRulesCommonRuleSet         = 7
+  }
+
   application_name    = local.application_name
   tags                = local.tags
   enable_core_logging = false
