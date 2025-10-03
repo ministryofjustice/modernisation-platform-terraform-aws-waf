@@ -6,7 +6,7 @@ output "ip_set_arn" {
   value = try(module.waf.ip_set_arn, "")
 }
 
-output "log_group_arn" {
+output "log_group_name" {
   value = try(module.waf.log_group_name, "") 
 }
 
