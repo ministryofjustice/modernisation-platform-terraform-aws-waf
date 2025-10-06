@@ -4,13 +4,33 @@
 
 ## 🚧 Known Issues & Limitations
 
-### 1. Rule Priority Cannot Currently Be Managed - Solved with latest update
+1. This module was created from a previous module here - https://github.com/ministryofjustice/modernisation-platform-terraform-waf
 
-### 2. FM-Managed Rule Conflict for MOJ Teams - Solved with latest update
+## Why use this module?
 
-### 3. This module was created from a previous module here - https://github.com/ministryofjustice/modernisation-platform-terraform-waf
+- Batteries‑included WAF: opinionated defaults for common web risks (SQLi, bad inputs, bot control, anonymous IPs, etc.).
+
+- Configurable: enable/disable each AWS Managed Rule Group and add your own via additional_managed_rules.
+
+- Simple IP blocking: maintain a plain list of IPs in SSM Parameter Store — the module turns it into an IP set.
+
+- Logs wired for you: CloudWatch log group + subscription filter to the core‑logging account.
+
+- Operational signals: optional DDoS threshold alarm and optional PagerDuty integration.
+
+- Works with multiple resources: associate the Web ACL with one or many LBs/CloudFront distributions via ARNs.
+
+⚠️ Rule ordering/priorities – now supported. Earlier limitations noted in the repo history have been addressed.
 
 ---
+
+## Requirements
+
+- Terraform: >= 1.0.1
+
+- Provider: hashicorp/aws ~> 5.90
+
+The module also expects access to the Modernisation Platform logging account ID when log shipping is enabled.
 
 ## Usage
 
@@ -70,6 +90,34 @@ module "waf" {
 }
 
 ```
+
+## How it works (under the hood)
+
+- aws_wafv2_web_acl with rule groups for the selected AWS Managed Rule Sets and any extras you pass via additional_managed_rules.
+
+- IP set created from an SSM Parameter (if supplied) and referenced by a WAF rule to block listed IPs.
+
+- Logging: CloudWatch log group + resource policy and a subscription filter to the core‑logging account.
+
+- DDoS alarm: rate‑based metric alarm and optional SNS topic → PagerDuty integration.
+
+
+## Associating with resources
+
+Provide one or more ARNs via associated_resource_arns. Common examples:
+
+`ALB: aws_lb.<name>.arn`
+
+`CloudFront: distribution ARN (ensure the Web ACL scope matches your target; regional ALB vs. CloudFront global)`
+
+If you’re using CloudFront, ensure you create the Web ACL in the CLOUDFRONT scope; for regional resources (ALB, API Gateway), use REGIONAL. This module handles association via the ARNs you provide.
+
+## Security
+
+No secrets should be committed to this repository.
+
+WAF logs contain security‑sensitive data; ensure access to the log group and the cross‑account subscription is restricted.
+
 <!--- BEGIN_TF_DOCS --->
 
 
