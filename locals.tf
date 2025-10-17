@@ -48,8 +48,8 @@ locals {
 
   # Build the structure expected by main.tf's dynamic "rule"
   # managed_rule_actions is expected to be a map(name => bool):
-  #   true  => override_action = "count"
-  #   false => override_action = "none" (respect vendor actions; typically block)
+  #   true  => override_action = "none"  (respect vendor actions; typically block)
+  #   false => override_action = "count" (count only)
   managed_rule_groups_with_priority = [
     for name in local.default_managed_rule_order : {
       name            = name
