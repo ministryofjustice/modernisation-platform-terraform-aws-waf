@@ -54,7 +54,9 @@ locals {
     for name in local.default_managed_rule_order : {
       name            = name
       vendor_name     = "AWS"
-      override_action = (try(var.managed_rule_actions[name], false) ? "count" : "none")
+      # true  => none  (respect vendor actions; typically block)
+      # false => count (count only)
+      override_action = (try(var.managed_rule_actions[name], false) ? "none" : "count")
       priority        = local.effective_managed_rule_priority_map[name]
     }
     if contains(keys(var.managed_rule_actions), name)
