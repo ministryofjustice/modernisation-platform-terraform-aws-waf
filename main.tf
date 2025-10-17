@@ -203,6 +203,21 @@ resource "aws_wafv2_web_acl" "mp_waf_acl" {
     sampled_requests_enabled   = true
   }
 
+  # --- Guardrails ---
+  lifecycle {
+    # 1) Ensure no duplicate priorities across fixed (1..3) + managed rules
+    precondition {
+      condition     = local.priorities_are_unique
+      error_message = "Each WAF rule must have a unique priority (including 1..3 for fixed rules)."
+    }
+
+    # 2) ddos_rate_limit must be set and >0 when DDoS protection is enabled
+    precondition {
+      condition     = local.ddos_rate_limit_valid
+      error_message = "When enable_ddos_protection is true, ddos_rate_limit must be > 0."
+    }
+  }
+
   tags = local.tags
 }
 

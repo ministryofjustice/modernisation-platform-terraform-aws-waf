@@ -48,13 +48,15 @@ locals {
 
   # Build the structure expected by main.tf's dynamic "rule"
   # managed_rule_actions is expected to be a map(name => bool):
-  #   true  => override_action = "count"
-  #   false => override_action = "none" (respect vendor actions; typically block)
+  #   true  => override_action = "none"  (respect vendor actions; typically block)
+  #   false => override_action = "count" (count only)
   managed_rule_groups_with_priority = [
     for name in local.default_managed_rule_order : {
       name            = name
       vendor_name     = "AWS"
-      override_action = (try(var.managed_rule_actions[name], false) ? "count" : "none")
+      # true  => none  (respect vendor actions; typically block)
+      # false => count (count only)
+      override_action = (try(var.managed_rule_actions[name], false) ? "none" : "count")
       priority        = local.effective_managed_rule_priority_map[name]
     }
     if contains(keys(var.managed_rule_actions), name)
