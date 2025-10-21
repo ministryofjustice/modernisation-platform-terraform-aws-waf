@@ -1,3 +1,4 @@
+
 ###############################################################################
 #  Input variables for WAF module
 ###############################################################################
@@ -102,12 +103,24 @@ variable "managed_rule_actions" {
 
 # Optional additional managed rule groups (e.g. third-party)
 variable "additional_managed_rules" {
-  description = "Additional AWS Managed Rule Groups to include in the WebACL."
+  description = <<EOT
+Additional rule attachments to include in the WebACL.
+Supply either:
+- Managed: { name, vendor_name, version?, override_action?, priority? }
+- External by ARN: { arn, override_action?, priority? }
+
+If 'priority' is omitted, a fallback of 1000 + index(...) is used.
+EOT
   type = list(object({
-    name            = string
-    vendor_name     = string
-    version         = optional(string)
-    override_action = optional(string) # 'none' or 'count'
+    # Managed path:
+    name        = optional(string)
+    vendor_name = optional(string)
+    version     = optional(string)
+    # External path:
+    arn         = optional(string)
+
+    override_action = optional(string) # "none" | "count"
+    priority        = optional(number)
   }))
   default = []
 }
