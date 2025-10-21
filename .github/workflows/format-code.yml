@@ -1,19 +1,31 @@
 name: "Format Code: ensure code formatting guidelines are met"
+
 on:
   pull_request:
     types: [opened, edited, reopened, synchronize]
 
 permissions: read-all
-  
+
 jobs:
   format-code:
+    runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
       security-events: write  # needed for SARIF upload
-    runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      # 1) Check out the PR *head commit* (not the merge ref)
+      - name: Checkout PR head commit
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      # 2) Create/switch to a real local branch so `git symbolic-ref` works
+      - name: Create local branch for PR (avoid detached HEAD)
+        run: |
+          git switch --create "${{ github.head_ref }}" || git switch "${{ github.head_ref }}"
+          git status
 
       - name: Run Format Code Action
         uses: ministryofjustice/modernisation-platform-github-actions/format-code@39db49635a1a20aee7dcffce535321cd01760135 # v3.4.5
