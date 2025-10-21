@@ -1,41 +1,19 @@
 name: "Format Code: ensure code formatting guidelines are met"
-
 on:
   pull_request:
     types: [opened, edited, reopened, synchronize]
 
 permissions: read-all
-
+  
 jobs:
   format-code:
-    # Optional: skip if PR is from a fork (GITHUB_TOKEN can't push to the fork)
-    if: ${{ github.event.pull_request.head.repo.fork == false }}
-    runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
-      security-events: write  # for SARIF upload, if used
+      security-events: write  # needed for SARIF upload
+    runs-on: ubuntu-latest
     steps:
-      # 1) Check out the PR *head commit* (NOT the merge ref)
-      - name: Checkout PR head commit
+      - name: Checkout repository
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-
-      # 2) Attach HEAD to a real local branch so symbolic-ref works
-      - name: Create/switch to local branch (avoid detached HEAD)
-        run: |
-          git switch --create "${{ github.head_ref }}" || git switch "${{ github.head_ref }}"
-          echo "Now on branch: $(git symbolic-ref --short HEAD)"
-
-      # (Optional) sanity output to verify the branch & SHAs used
-      - name: Debug branch context
-        run: |
-          echo "github.head_ref=${{ github.head_ref }}"
-          echo "PR head SHA=${{ github.event.pull_request.head.sha }}"
-          echo "Current branch=$(git symbolic-ref --short HEAD)"
-          echo "Current commit=$(git rev-parse HEAD)"
 
       - name: Run Format Code Action
         uses: ministryofjustice/modernisation-platform-github-actions/format-code@39db49635a1a20aee7dcffce535321cd01760135 # v3.4.5
