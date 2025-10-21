@@ -162,39 +162,49 @@ resource "aws_wafv2_web_acl" "mp_waf_acl" {
     }
   }
 
-  # Optional: Additional managed rules (fallback priority starts at 1000)
+  # Optional: Additional rules (managed by name/vendor OR external by ARN)
   dynamic "rule" {
     for_each = var.additional_managed_rules
     content {
-      name     = rule.value.name
-      priority = 1000 + index(var.additional_managed_rules, rule.value)
+      name     = coalesce(try(rule.value.name, null), try(rule.value.arn, null))
+      priority = try(rule.value.priority, 1000 + index(var.additional_managed_rules, rule.value))
 
       override_action {
         dynamic "count" {
-          for_each = rule.value.override_action == "count" ? [1] : []
+          for_each = try(lower(rule.value.override_action), "none") == "count" ? [1] : []
           content {}
         }
         dynamic "none" {
-          for_each = rule.value.override_action == "none" || rule.value.override_action == null ? [1] : []
+          for_each = try(lower(rule.value.override_action), "none") == "none" ? [1] : []
           content {}
         }
       }
 
       statement {
-        managed_rule_group_statement {
-          name        = rule.value.name
-          vendor_name = rule.value.vendor_name
-          version     = try(rule.value.version, null)
+        # If 'arn' is set, attach by reference; otherwise use managed rule group
+        dynamic "rule_group_reference_statement" {
+          for_each = try(rule.value.arn, null) != null ? [1] : []
+          content { arn = rule.value.arn }
+        }
+
+        dynamic "managed_rule_group_statement" {
+          for_each = try(rule.value.arn, null) == null ? [1] : []
+          content {
+            name        = rule.value.name
+            vendor_name = coalesce(try(rule.value.vendor_name, null), "AWS")
+            version     = try(rule.value.version, null)
+          }
         }
       }
 
       visibility_config {
         cloudwatch_metrics_enabled = true
-        metric_name                = rule.value.name
+        metric_name                = coalesce(try(rule.value.name, null), try(rule.value.arn, null))
         sampled_requests_enabled   = true
       }
     }
   }
+
 
   # Web ACL-level visibility settings
   visibility_config {

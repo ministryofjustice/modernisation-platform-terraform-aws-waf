@@ -78,7 +78,19 @@ locals {
 
   managed_priorities = [for r in local.managed_rule_groups_with_priority : r.priority]
 
-  all_priorities_in_use = concat(local.static_priorities_in_use, local.managed_priorities)
+  # Additional rules (managed by name/vendor OR external by ARN)
+  # Use explicit priority if provided; otherwise fallback to 1000 + index(...)
+  additional_priorities = [
+    for r in var.additional_managed_rules :
+    try(r.priority, 1000 + index(var.additional_managed_rules, r))
+  ]
+
+
+  all_priorities_in_use = concat(
+    local.static_priorities_in_use,
+    local.managed_priorities,
+    local.additional_priorities
+  )
 
   priorities_are_unique = length(distinct(local.all_priorities_in_use)) == length(local.all_priorities_in_use)
 }
