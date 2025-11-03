@@ -1,4 +1,3 @@
-
 ###############################################################################
 #  Input variables for WAF module
 ###############################################################################
@@ -14,6 +13,19 @@ variable "tags" {
   description = "Common tags applied to all resources."
   type        = map(string)
   default     = {}
+}
+
+# Optional explicit Web ACL name; if null, defaults to lower(\"${var.application_name}-waf\")
+variable "web_acl_name" {
+  description = "Explicit name for the WAFv2 Web ACL. If null, defaults to \"${var.application_name}-waf\" (lowercased)."
+  type        = string
+  default     = null
+
+  # Keep names AWS-friendly
+  validation {
+    condition     = var.web_acl_name == null || can(regex("^[A-Za-z0-9_-]+$", var.web_acl_name))
+    error_message = "web_acl_name may only contain letters, numbers, hyphen (-), and underscore (_)."
+  }
 }
 
 ###############################################################################
@@ -44,14 +56,14 @@ variable "ip_address_version" {
 
 # Enable Shield-style rate limiting
 variable "enable_ddos_protection" {
-  description = "If true (default), create a Shield‑style rate‑based blocking rule at the WebACL."
+  description = "If true (default), create a Shield-style rate-based blocking rule at the WebACL."
   type        = bool
   default     = true
 }
 
 # Threshold for rate-based rule (requests per 5-min)
 variable "ddos_rate_limit" {
-  description = "Requests per 5‑minute window that triggers the DDoS rate‑based block. Required when enable_ddos_protection = true."
+  description = "Requests per 5-minute window that triggers the DDoS rate-based block. Required when enable_ddos_protection = true."
   type        = number
   validation {
     condition     = var.ddos_rate_limit > 0
@@ -97,11 +109,12 @@ EOT
 
 # Explicit override for managed rule actions (true = block, false = count)
 variable "managed_rule_actions" {
-  type        = map(bool)
   description = "Map of AWS Managed Rule Group names to boolean flag indicating whether to block (true) or count (false)."
+  type        = map(bool)
+  default     = {}
 }
 
-# Optional additional managed rule groups (e.g. third-party)
+# Optional additional rule attachments (managed by name/vendor or external by ARN)
 variable "additional_managed_rules" {
   description = <<EOT
 Additional rule attachments to include in the WebACL.
@@ -123,6 +136,30 @@ EOT
     priority        = optional(number)
   }))
   default = []
+
+  # Ensure each item is *either* managed-by-name or external-by-ARN (but not both / not neither)
+  validation {
+    condition = alltrue([
+      for r in var.additional_managed_rules :
+      (
+        (try(r.arn, null) != null && try(r.name, null) == null) ||
+        (try(r.arn, null) == null && try(r.name, null) != null)
+      )
+    ])
+    error_message = "Each additional_managed_rules item must specify either 'arn' (external) or 'name' (managed), but not both."
+  }
+
+  # If override_action is set, it must be one of the accepted values
+  validation {
+    condition = alltrue([
+      for r in var.additional_managed_rules :
+      (
+        try(r.override_action, null) == null ||
+        contains(["none", "count", "NONE", "COUNT"], r.override_action)
+      )
+    ])
+    error_message = "additional_managed_rules.override_action must be either 'none' or 'count' (case-insensitive) when set."
+  }
 }
 
 ###############################################################################
@@ -131,7 +168,7 @@ EOT
 
 # Name of SSM parameter to hold the IP block list
 variable "ssm_parameter_name" {
-  description = "Name of the SSM SecureString parameter that stores the JSON‑encoded blocked IP list."
+  description = "Name of the SSM SecureString parameter that stores the JSON-encoded blocked IP list."
   type        = string
   default     = "/waf/ip_block_list"
 }
@@ -152,7 +189,7 @@ variable "log_retention_in_days" {
 
 # Existing CloudWatch log group ARN (if not auto-created)
 variable "log_destination_arn" {
-  description = "Optional ARN of an existing CloudWatch Log Group to send WAF logs to"
+  description = "Optional ARN of an existing CloudWatch Log Group to send WAF logs to."
   type        = string
   default     = null
 }
@@ -163,29 +200,29 @@ variable "log_destination_arn" {
 
 # Core logging account to forward logs to
 variable "core_logging_account_id" {
-  description = "Account ID for core logging"
+  description = "Account ID for core logging."
   type        = string
   default     = ""
 }
 
 # Whether to enable forwarding logs to the core logging account
 variable "enable_core_logging" {
-  description = "Whether to enable forwarding logs to the core logging account"
+  description = "Whether to enable forwarding logs to the core logging account."
   type        = bool
   default     = true
 }
 
 # Enable creation of DDoS detection CloudWatch alarms
 variable "enable_ddos_alarms" {
+  description = "Enable DDoS protection CloudWatch alarms."
   type        = bool
-  description = "Enable DDoS protection CloudWatch alarms"
   default     = true
 }
 
 # Enable integration with PagerDuty for alerting
 variable "enable_pagerduty_integration" {
+  description = "Enable PagerDuty SNS integration for DDoS alarms."
   type        = bool
-  description = "Enable PagerDuty SNS integration for DDoS alarms"
   default     = true
 }
 
@@ -198,14 +235,15 @@ variable "ddos_alarm_resources" {
   default = {}
 }
 
+# Explicit priorities for built-in AWS Managed Rule Groups
 variable "managed_rule_priorities" {
   description = <<EOT
 Map of AWS Managed Rule Group names to explicit priority integers.
 Lower numbers are evaluated first (higher priority).
 If omitted for a rule, a sensible default order is used (10,20,30…).
 EOT
-  type        = map(number)
-  default     = {}
+  type    = map(number)
+  default = {}
 
   validation {
     condition = alltrue([

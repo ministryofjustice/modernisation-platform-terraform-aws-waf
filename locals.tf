@@ -1,6 +1,7 @@
 locals {
   base_name                            = lower(format("%s-waf", var.application_name))
-  tags                                 = merge(var.tags, { Name = local.base_name })
+  effective_web_acl_name               = coalesce(var.web_acl_name, local.base_name)
+  tags                                 = merge(var.tags, { Name = local.effective_web_acl_name })
   core_logging_account_id              = var.core_logging_account_id
   core_logging_cw_destination_arn      = "arn:aws:logs:eu-west-2:${local.core_logging_account_id}:destination:waf-logs-destination"
   core_logging_cw_destination_resource = "arn:aws:logs:eu-west-2:${local.core_logging_account_id}:destination/waf-logs-destination"
