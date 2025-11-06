@@ -181,34 +181,36 @@ If you're looking to raise an issue with this module, please create a new issue 
 | <a name="input_application_name"></a> [application\_name](#input\_application\_name) | Application identifier used for naming and tagging. | `string` | n/a | yes |
 | <a name="input_associated_resource_arns"></a> [associated\_resource\_arns](#input\_associated\_resource\_arns) | List of resource ARNs (e.g. ALB, CloudFront distribution) to associate with the Web ACL. | `list(string)` | `[]` | no |
 | <a name="input_block_non_uk_traffic"></a> [block\_non\_uk\_traffic](#input\_block\_non\_uk\_traffic) | If true, add a WAF rule that blocks any request not originating from the United Kingdom (GB). | `bool` | `false` | no |
-| <a name="input_core_logging_account_id"></a> [core\_logging\_account\_id](#input\_core\_logging\_account\_id) | Account ID for core logging | `string` | `""` | no |
+| <a name="input_core_logging_account_id"></a> [core\_logging\_account\_id](#input\_core\_logging\_account\_id) | Account ID for core logging. | `string` | `""` | no |
 | <a name="input_ddos_alarm_resources"></a> [ddos\_alarm\_resources](#input\_ddos\_alarm\_resources) | Map of resources to monitor for DDoS alarms. Each value must contain 'arn'. | <pre>map(object({<br/>    arn = string<br/>  }))</pre> | `{}` | no |
-| <a name="input_ddos_rate_limit"></a> [ddos\_rate\_limit](#input\_ddos\_rate\_limit) | Requests per 5‑minute window that triggers the DDoS rate‑based block. Required when enable\_ddos\_protection = true. | `number` | n/a | yes |
-| <a name="input_enable_core_logging"></a> [enable\_core\_logging](#input\_enable\_core\_logging) | Whether to enable forwarding logs to the core logging account | `bool` | `true` | no |
-| <a name="input_enable_ddos_alarms"></a> [enable\_ddos\_alarms](#input\_enable\_ddos\_alarms) | Enable DDoS protection CloudWatch alarms | `bool` | `true` | no |
-| <a name="input_enable_ddos_protection"></a> [enable\_ddos\_protection](#input\_enable\_ddos\_protection) | If true (default), create a Shield‑style rate‑based blocking rule at the WebACL. | `bool` | `true` | no |
-| <a name="input_enable_pagerduty_integration"></a> [enable\_pagerduty\_integration](#input\_enable\_pagerduty\_integration) | Enable PagerDuty SNS integration for DDoS alarms | `bool` | `true` | no |
+| <a name="input_ddos_rate_limit"></a> [ddos\_rate\_limit](#input\_ddos\_rate\_limit) | Requests per 5-minute window that triggers the DDoS rate-based block. Required when enable\_ddos\_protection = true. | `number` | n/a | yes |
+| <a name="input_enable_core_logging"></a> [enable\_core\_logging](#input\_enable\_core\_logging) | Whether to enable forwarding logs to the core logging account. | `bool` | `true` | no |
+| <a name="input_enable_ddos_alarms"></a> [enable\_ddos\_alarms](#input\_enable\_ddos\_alarms) | Enable DDoS protection CloudWatch alarms. | `bool` | `true` | no |
+| <a name="input_enable_ddos_protection"></a> [enable\_ddos\_protection](#input\_enable\_ddos\_protection) | If true (default), create a Shield-style rate-based blocking rule at the WebACL. | `bool` | `true` | no |
+| <a name="input_enable_pagerduty_integration"></a> [enable\_pagerduty\_integration](#input\_enable\_pagerduty\_integration) | Enable PagerDuty SNS integration for DDoS alarms. | `bool` | `true` | no |
 | <a name="input_ip_address_version"></a> [ip\_address\_version](#input\_ip\_address\_version) | IP version for the IP set (IPV4 or IPV6). | `string` | `"IPV4"` | no |
-| <a name="input_log_destination_arn"></a> [log\_destination\_arn](#input\_log\_destination\_arn) | Optional ARN of an existing CloudWatch Log Group to send WAF logs to | `string` | `null` | no |
+| <a name="input_log_destination_arn"></a> [log\_destination\_arn](#input\_log\_destination\_arn) | Optional ARN of an existing CloudWatch Log Group to send WAF logs to. | `string` | `null` | no |
 | <a name="input_log_retention_in_days"></a> [log\_retention\_in\_days](#input\_log\_retention\_in\_days) | Retention period for the WAF logs. | `number` | `365` | no |
-| <a name="input_managed_rule_actions"></a> [managed\_rule\_actions](#input\_managed\_rule\_actions) | Map of AWS Managed Rule Group names to boolean flag indicating whether to block (true) or count (false). | `map(bool)` | n/a | yes |
+| <a name="input_managed_rule_actions"></a> [managed\_rule\_actions](#input\_managed\_rule\_actions) | Map of AWS Managed Rule Group names to boolean flag indicating whether to block (true) or count (false). | `map(bool)` | `{}` | no |
 | <a name="input_managed_rule_enforce"></a> [managed\_rule\_enforce](#input\_managed\_rule\_enforce) | When true, AWS Managed Rule Groups are set to block (override\_action = "none"). When false (default) they run in count mode. | `bool` | `false` | no |
 | <a name="input_managed_rule_groups"></a> [managed\_rule\_groups](#input\_managed\_rule\_groups) | List of managed rule groups to enable. Each object supports:<br/>  * name            – (Required) Rule group name, e.g. "AWSManagedRulesCommonRuleSet".<br/>  * vendor\_name     – (Optional) Defaults to "AWS".<br/>  * override\_action – (Optional) "count" or "none". If omitted, the module uses managed\_rule\_enforce to decide.<br/>  * priority        – (Optional) Rule priority. If omitted, the module assigns priorities starting at 10. | <pre>list(object({<br/>    name            = string<br/>    vendor_name     = optional(string, "AWS")<br/>    override_action = optional(string)<br/>    priority        = optional(number)<br/>  }))</pre> | <pre>[<br/>  {<br/>    "name": "AWSManagedRulesKnownBadInputsRuleSet"<br/>  },<br/>  {<br/>    "name": "AWSManagedRulesCommonRuleSet"<br/>  },<br/>  {<br/>    "name": "AWSManagedRulesSQLiRuleSet"<br/>  },<br/>  {<br/>    "name": "AWSManagedRulesLinuxRuleSet"<br/>  },<br/>  {<br/>    "name": "AWSManagedRulesAnonymousIpList"<br/>  },<br/>  {<br/>    "name": "AWSManagedRulesBotControlRuleSet"<br/>  }<br/>]</pre> | no |
 | <a name="input_managed_rule_priorities"></a> [managed\_rule\_priorities](#input\_managed\_rule\_priorities) | Map of AWS Managed Rule Group names to explicit priority integers.<br/>Lower numbers are evaluated first (higher priority).<br/>If omitted for a rule, a sensible default order is used (10,20,30…). | `map(number)` | `{}` | no |
-| <a name="input_ssm_parameter_name"></a> [ssm\_parameter\_name](#input\_ssm\_parameter\_name) | Name of the SSM SecureString parameter that stores the JSON‑encoded blocked IP list. | `string` | `"/waf/ip_block_list"` | no |
+| <a name="input_ssm_parameter_name"></a> [ssm\_parameter\_name](#input\_ssm\_parameter\_name) | Name of the SSM SecureString parameter that stores the JSON-encoded blocked IP list. | `string` | `"/waf/ip_block_list"` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Common tags applied to all resources. | `map(string)` | `{}` | no |
+| <a name="input_web_acl_name"></a> [web\_acl\_name](#input\_web\_acl\_name) | Explicit name for the WAFv2 Web ACL. If null, defaults to app name (lowercased). | `string` | `null` | no |
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
-| <a name="output_ddos_alarm_sns_topic_name"></a> [ddos\_alarm\_sns\_topic\_name](#output\_ddos\_alarm\_sns\_topic\_name) | Name of the SNS topic for DDoS alarms used in PagerDuty module |
-| <a name="output_ddos_alarm_topic_arn"></a> [ddos\_alarm\_topic\_arn](#output\_ddos\_alarm\_topic\_arn) | ARN of the SNS topic used for DDoS alarms |
+| <a name="output_ddos_alarm_sns_topic_name"></a> [ddos\_alarm\_sns\_topic\_name](#output\_ddos\_alarm\_sns\_topic\_name) | Name of the DDoS alarms SNS topic used by the PagerDuty integration module. |
+| <a name="output_ddos_alarm_topic_arn"></a> [ddos\_alarm\_topic\_arn](#output\_ddos\_alarm\_topic\_arn) | ARN of the SNS topic used for DDoS alarms. |
+| <a name="output_effective_web_acl_name"></a> [effective\_web\_acl\_name](#output\_effective\_web\_acl\_name) | The effective Web ACL name used by the module. |
 | <a name="output_ip_set_arn"></a> [ip\_set\_arn](#output\_ip\_set\_arn) | ARN of the IP set used for blocking. |
-| <a name="output_log_group_name"></a> [log\_group\_name](#output\_log\_group\_name) | Name of the CloudWatch log group containing WAF logs. |
-| <a name="output_waf_log_group_arn"></a> [waf\_log\_group\_arn](#output\_waf\_log\_group\_arn) | ARN of the log group receiving WAF logs |
+| <a name="output_log_group_name"></a> [log\_group\_name](#output\_log\_group\_name) | Name of the CloudWatch log group containing WAF logs (null if log\_destination\_arn was provided). |
+| <a name="output_waf_log_group_arn"></a> [waf\_log\_group\_arn](#output\_waf\_log\_group\_arn) | ARN of the log group receiving WAF logs. |
 | <a name="output_web_acl_arn"></a> [web\_acl\_arn](#output\_web\_acl\_arn) | ARN of the WAFv2 Web ACL. |
-| <a name="output_web_acl_name"></a> [web\_acl\_name](#output\_web\_acl\_name) | Name of the WAF Web ACL |
+| <a name="output_web_acl_name"></a> [web\_acl\_name](#output\_web\_acl\_name) | Name of the WAF Web ACL. |
 <!-- END_TF_DOCS -->
 
 [Standards Link]: https://github-community.service.justice.gov.uk/repository-standards/modernisation-platform-terraform-module-template "Repo standards badge."
