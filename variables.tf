@@ -17,7 +17,7 @@ variable "tags" {
 
 # Optional explicit Web ACL name; if null, defaults to lower(\"${var.application_name}-waf\")
 variable "web_acl_name" {
-  description = "Explicit name for the WAFv2 Web ACL. If null, defaults to \"${var.application_name}-waf\" (lowercased)."
+  description = "Explicit name for the WAFv2 Web ACL. If null, defaults to app name (lowercased)."
   type        = string
   default     = null
 

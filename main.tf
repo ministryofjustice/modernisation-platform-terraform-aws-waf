@@ -167,11 +167,13 @@ dynamic "rule" {
   for_each = var.additional_managed_rules
   content {
     # Safe display name
-    name = regexreplace(
-      coalesce(try(rule.value.name, null), try(rule.value.arn, null)),
-      "[^0-9A-Za-z_-]",
-      "-"
-    )
+    name = lower(join(
+      "-",
+      regexall(
+        "[0-9A-Za-z_-]+",
+        coalesce(try(rule.value.name, null), try(rule.value.arn, null))
+      )
+    ))
 
     priority = try(rule.value.priority, 1000 + index(var.additional_managed_rules, rule.value))
 
@@ -205,11 +207,13 @@ dynamic "rule" {
 
     visibility_config {
       cloudwatch_metrics_enabled = true
-      metric_name = regexreplace(
-        coalesce(try(rule.value.name, null), try(rule.value.arn, null)),
-        "[^0-9A-Za-z_-]",
-        "-"
-      )
+        metric_name = lower(join(
+          "-",
+          regexall(
+            "[0-9A-Za-z_-]+",
+            coalesce(try(rule.value.name, null), try(rule.value.arn, null))
+          )
+        ))
       sampled_requests_enabled = true
     }
   }
