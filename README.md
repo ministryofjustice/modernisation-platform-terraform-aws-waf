@@ -181,6 +181,7 @@ If you're looking to raise an issue with this module, please create a new issue 
 | <a name="input_application_name"></a> [application\_name](#input\_application\_name) | Application identifier used for naming and tagging. | `string` | n/a | yes |
 | <a name="input_associated_resource_arns"></a> [associated\_resource\_arns](#input\_associated\_resource\_arns) | List of resource ARNs (e.g. ALB, CloudFront distribution) to associate with the Web ACL. | `list(string)` | `[]` | no |
 | <a name="input_block_non_uk_traffic"></a> [block\_non\_uk\_traffic](#input\_block\_non\_uk\_traffic) | If true, add a WAF rule that blocks any request not originating from the United Kingdom (GB). | `bool` | `false` | no |
+| <a name="input_blocked_ip_rule_priority"></a> [blocked\_ip\_rule\_priority](#input\_blocked\_ip\_rule\_priority) | Priority for the IP-set 'blocked-ip' rule. | `number` | `1` | no |
 | <a name="input_core_logging_account_id"></a> [core\_logging\_account\_id](#input\_core\_logging\_account\_id) | Account ID for core logging. | `string` | `""` | no |
 | <a name="input_ddos_alarm_resources"></a> [ddos\_alarm\_resources](#input\_ddos\_alarm\_resources) | Map of resources to monitor for DDoS alarms. Each value must contain 'arn'. | <pre>map(object({<br/>    arn = string<br/>  }))</pre> | `{}` | no |
 | <a name="input_ddos_rate_limit"></a> [ddos\_rate\_limit](#input\_ddos\_rate\_limit) | Requests per 5-minute window that triggers the DDoS rate-based block. Required when enable\_ddos\_protection = true. | `number` | n/a | yes |
