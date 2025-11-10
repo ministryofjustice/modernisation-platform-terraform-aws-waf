@@ -55,7 +55,7 @@ resource "aws_wafv2_web_acl" "mp_waf_acl" {
   # Rule 1: Explicit block list using IP set
   rule {
     name     = "${local.effective_web_acl_name}-blocked-ip"
-    priority = 1
+    priority = var.blocked_ip_rule_priority
 
     action {
       block {}
@@ -73,6 +73,7 @@ resource "aws_wafv2_web_acl" "mp_waf_acl" {
       sampled_requests_enabled   = true
     }
   }
+
 
   # Rule 2: Optional DDoS rate-based blocking
   dynamic "rule" {

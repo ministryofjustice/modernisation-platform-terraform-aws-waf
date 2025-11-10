@@ -28,6 +28,19 @@ variable "web_acl_name" {
   }
 }
 
+# Priority for the explicit IP-set block rule (defaults to 1).
+variable "blocked_ip_rule_priority" {
+  description = "Priority for the IP-set 'blocked-ip' rule."
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = var.blocked_ip_rule_priority >= 1 && floor(var.blocked_ip_rule_priority) == var.blocked_ip_rule_priority
+    error_message = "blocked_ip_rule_priority must be a positive integer (>= 1)."
+  }
+}
+
+
 ###############################################################################
 # Networking / geographic blocking
 ###############################################################################

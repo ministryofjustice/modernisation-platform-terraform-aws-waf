@@ -67,15 +67,16 @@ locals {
   # Sanity checks to prevent collisions
   #########################################
 
-  # Static priorities already consumed by fixed rules in main.tf
-  # Rule 1: blocked-ip  (priority = 1)
-  # Rule 2: shield      (priority = 2) only if enabled
-  # Rule 3: block-non-uk(priority = 3) only if enabled
-  static_priorities_in_use = concat(
-    [1],
-    var.enable_ddos_protection ? [2] : [],
-    var.block_non_uk_traffic ? [3] : []
-  )
+# Static priorities already consumed by fixed rules in main.tf
+# - Blocked IP set: priority = var.blocked_ip_rule_priority
+# - DDoS rate-limit: priority = 2 (when enabled)
+# - Geo block (allow only GB): priority = 3 (when enabled)
+static_priorities_in_use = concat(
+  [var.blocked_ip_rule_priority],
+  var.enable_ddos_protection ? [2] : [],
+  var.block_non_uk_traffic ? [3] : []
+)
+
 
   managed_priorities = [for r in local.managed_rule_groups_with_priority : r.priority]
 
