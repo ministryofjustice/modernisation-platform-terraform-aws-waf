@@ -21,10 +21,10 @@ resource "aws_ssm_parameter" "ip_block_list" {
 # 2. WAF IP Set populated from the SSM parameter
 # ---------------------------------------------------------------------
 resource "aws_wafv2_ip_set" "mp_waf_ip_set" {
-  name               = "${local.base_name}-ip-set"
+  name               = "${local.effective_web_acl_name}-ip-set"
   scope              = "REGIONAL"
   ip_address_version = var.ip_address_version
-  description        = "Addresses blocked by ${local.base_name} populated from SSM"
+  description        = "Addresses blocked by ${local.effective_web_acl_name} populated from SSM"
   addresses          = jsondecode(aws_ssm_parameter.ip_block_list.value)
   tags               = local.tags
 }
@@ -34,7 +34,7 @@ resource "aws_wafv2_ip_set" "mp_waf_ip_set" {
 # ---------------------------------------------------------------------
 resource "aws_cloudwatch_log_group" "mp_waf_cloudwatch_log_group" {
   count             = var.log_destination_arn == null ? 1 : 0
-  name              = "aws-waf-logs-${local.base_name}"
+  name              = "aws-waf-logs-${local.effective_web_acl_name}"
   retention_in_days = var.log_retention_in_days
   tags              = local.tags
 }
@@ -43,9 +43,9 @@ resource "aws_cloudwatch_log_group" "mp_waf_cloudwatch_log_group" {
 # 4. WAF Web ACL with multiple optional and dynamic rules
 # ---------------------------------------------------------------------
 resource "aws_wafv2_web_acl" "mp_waf_acl" {
-  name        = local.base_name
+  name        = local.effective_web_acl_name
   scope       = "REGIONAL"
-  description = "AWS WAF protecting ${local.base_name}"
+  description = "AWS WAF protecting ${local.effective_web_acl_name}"
   depends_on  = [aws_wafv2_ip_set.mp_waf_ip_set]
 
   default_action {
@@ -54,8 +54,8 @@ resource "aws_wafv2_web_acl" "mp_waf_acl" {
 
   # Rule 1: Explicit block list using IP set
   rule {
-    name     = "${local.base_name}-blocked-ip"
-    priority = 1
+    name     = "${local.effective_web_acl_name}-blocked-ip"
+    priority = var.blocked_ip_rule_priority
 
     action {
       block {}
@@ -69,10 +69,11 @@ resource "aws_wafv2_web_acl" "mp_waf_acl" {
 
     visibility_config {
       cloudwatch_metrics_enabled = true
-      metric_name                = "${local.base_name}-blocked-ip"
+      metric_name                = "${local.effective_web_acl_name}-blocked-ip"
       sampled_requests_enabled   = true
     }
   }
+
 
   # Rule 2: Optional DDoS rate-based blocking
   dynamic "rule" {
@@ -162,44 +163,69 @@ resource "aws_wafv2_web_acl" "mp_waf_acl" {
     }
   }
 
-  # Optional: Additional managed rules (fallback priority starts at 1000)
-  dynamic "rule" {
-    for_each = var.additional_managed_rules
-    content {
-      name     = rule.value.name
-      priority = 1000 + index(var.additional_managed_rules, rule.value)
+# Optional: Additional rules (managed by name/vendor OR external by ARN)
+dynamic "rule" {
+  for_each = var.additional_managed_rules
+  content {
+    # Safe display name
+    name = lower(join(
+      "-",
+      regexall(
+        "[0-9A-Za-z_-]+",
+        coalesce(try(rule.value.name, null), try(rule.value.arn, null))
+      )
+    ))
 
-      override_action {
-        dynamic "count" {
-          for_each = rule.value.override_action == "count" ? [1] : []
-          content {}
-        }
-        dynamic "none" {
-          for_each = rule.value.override_action == "none" || rule.value.override_action == null ? [1] : []
-          content {}
-        }
+    priority = try(rule.value.priority, 1000 + index(var.additional_managed_rules, rule.value))
+
+    override_action {
+      dynamic "count" {
+        for_each = try(lower(rule.value.override_action), "none") == "count" ? [1] : []
+        content {}
       }
+      dynamic "none" {
+        for_each = try(lower(rule.value.override_action), "none") == "none" ? [1] : []
+        content {}
+      }
+    }
 
-      statement {
-        managed_rule_group_statement {
+    statement {
+      # External by ARN
+      dynamic "rule_group_reference_statement" {
+        for_each = try(rule.value.arn, null) != null ? [1] : []
+        content { arn = rule.value.arn }
+      }
+      # Managed by name/vendor
+      dynamic "managed_rule_group_statement" {
+        for_each = try(rule.value.arn, null) == null ? [1] : []
+        content {
           name        = rule.value.name
-          vendor_name = rule.value.vendor_name
+          vendor_name = coalesce(try(rule.value.vendor_name, null), "AWS")
           version     = try(rule.value.version, null)
         }
       }
+    }
 
-      visibility_config {
-        cloudwatch_metrics_enabled = true
-        metric_name                = rule.value.name
-        sampled_requests_enabled   = true
-      }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+        metric_name = lower(join(
+          "-",
+          regexall(
+            "[0-9A-Za-z_-]+",
+            coalesce(try(rule.value.name, null), try(rule.value.arn, null))
+          )
+        ))
+      sampled_requests_enabled = true
     }
   }
+}
+
+
 
   # Web ACL-level visibility settings
   visibility_config {
     cloudwatch_metrics_enabled = true
-    metric_name                = local.base_name
+    metric_name                = local.effective_web_acl_name
     sampled_requests_enabled   = true
   }
 
@@ -233,21 +259,26 @@ data "aws_iam_policy_document" "waf" {
     }
     actions = ["logs:CreateLogStream", "logs:PutLogEvents"]
     resources = [
-      "${coalesce(var.log_destination_arn, aws_cloudwatch_log_group.mp_waf_cloudwatch_log_group[0].arn)}:*"
+      var.log_destination_arn != null
+        ? "${var.log_destination_arn}:*"
+        : "${aws_cloudwatch_log_group.mp_waf_cloudwatch_log_group[0].arn}:*"
     ]
   }
 }
 
 resource "aws_cloudwatch_log_resource_policy" "mp_waf_log_policy" {
-  policy_name     = "${local.base_name}-resource-policy"
+  policy_name     = "${local.effective_web_acl_name}-resource-policy"
   policy_document = data.aws_iam_policy_document.waf.json
 }
 
 resource "aws_wafv2_web_acl_logging_configuration" "mp_waf_log_config" {
   resource_arn = aws_wafv2_web_acl.mp_waf_acl.arn
   log_destination_configs = [
-    coalesce(var.log_destination_arn, aws_cloudwatch_log_group.mp_waf_cloudwatch_log_group[0].arn)
-  ]
+      var.log_destination_arn != null
+        ? var.log_destination_arn
+        : aws_cloudwatch_log_group.mp_waf_cloudwatch_log_group[0].arn
+    ]
+
   depends_on = [aws_cloudwatch_log_resource_policy.mp_waf_log_policy]
 }
 
@@ -264,7 +295,7 @@ resource "aws_wafv2_web_acl_association" "mp_waf_acl_association" {
 # IAM role and policy to forward logs to core logging account
 # ---------------------------------------------------------------------
 resource "aws_iam_role" "cwl_to_core_logging" {
-  name = "${local.base_name}-cwl-to-core-logging"
+  name = "${local.effective_web_acl_name}-cwl-to-core-logging"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -281,7 +312,7 @@ resource "aws_iam_role" "cwl_to_core_logging" {
 }
 
 resource "aws_iam_role_policy" "cwl_to_core_logging_policy" {
-  name = "${local.base_name}-cwl-to-core-logging-policy"
+  name = "${local.effective_web_acl_name}-cwl-to-core-logging-policy"
   role = aws_iam_role.cwl_to_core_logging.name
 
   policy = jsonencode({
@@ -296,9 +327,9 @@ resource "aws_iam_role_policy" "cwl_to_core_logging_policy" {
 
 # Optional: Forward logs to core logging account if enabled
 resource "aws_cloudwatch_log_subscription_filter" "forward_to_core_logging" {
-  count = var.enable_core_logging ? 1 : 0
+  count = var.enable_core_logging && var.log_destination_arn == null ? 1 : 0
 
-  name            = "${local.base_name}-waf-to-core-logging"
+  name            = "${local.effective_web_acl_name}-waf-to-core-logging"
   log_group_name  = aws_cloudwatch_log_group.mp_waf_cloudwatch_log_group[0].name
   filter_pattern  = "{$.action = * }"
   destination_arn = local.core_logging_cw_destination_arn

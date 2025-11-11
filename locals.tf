@@ -1,6 +1,7 @@
 locals {
   base_name                            = lower(format("%s-waf", var.application_name))
-  tags                                 = merge(var.tags, { Name = local.base_name })
+  effective_web_acl_name               = coalesce(var.web_acl_name, local.base_name)
+  tags                                 = merge(var.tags, { Name = local.effective_web_acl_name })
   core_logging_account_id              = var.core_logging_account_id
   core_logging_cw_destination_arn      = "arn:aws:logs:eu-west-2:${local.core_logging_account_id}:destination:waf-logs-destination"
   core_logging_cw_destination_resource = "arn:aws:logs:eu-west-2:${local.core_logging_account_id}:destination/waf-logs-destination"
@@ -66,19 +67,32 @@ locals {
   # Sanity checks to prevent collisions
   #########################################
 
-  # Static priorities already consumed by fixed rules in main.tf
-  # Rule 1: blocked-ip  (priority = 1)
-  # Rule 2: shield      (priority = 2) only if enabled
-  # Rule 3: block-non-uk(priority = 3) only if enabled
-  static_priorities_in_use = concat(
-    [1],
-    var.enable_ddos_protection ? [2] : [],
-    var.block_non_uk_traffic ? [3] : []
-  )
+# Static priorities already consumed by fixed rules in main.tf
+# - Blocked IP set: priority = var.blocked_ip_rule_priority
+# - DDoS rate-limit: priority = 2 (when enabled)
+# - Geo block (allow only GB): priority = 3 (when enabled)
+static_priorities_in_use = concat(
+  [var.blocked_ip_rule_priority],
+  var.enable_ddos_protection ? [2] : [],
+  var.block_non_uk_traffic ? [3] : []
+)
+
 
   managed_priorities = [for r in local.managed_rule_groups_with_priority : r.priority]
 
-  all_priorities_in_use = concat(local.static_priorities_in_use, local.managed_priorities)
+  # Additional rules (managed by name/vendor OR external by ARN)
+  # Use explicit priority if provided; otherwise fallback to 1000 + index(...)
+  additional_priorities = [
+    for r in var.additional_managed_rules :
+    try(r.priority, 1000 + index(var.additional_managed_rules, r))
+  ]
+
+
+  all_priorities_in_use = concat(
+    local.static_priorities_in_use,
+    local.managed_priorities,
+    local.additional_priorities
+  )
 
   priorities_are_unique = length(distinct(local.all_priorities_in_use)) == length(local.all_priorities_in_use)
 }
