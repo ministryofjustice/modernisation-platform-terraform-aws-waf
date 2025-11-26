@@ -347,7 +347,7 @@ data "aws_secretsmanager_secret_version" "pagerduty_integration_keys" {
 module "pagerduty_core_alerts" {
   count                     = var.enable_pagerduty_integration ? 1 : 0
   depends_on                = [aws_sns_topic.ddos_alarm]
-  source                    = "github.com/ministryofjustice/modernisation-platform-terraform-pagerduty-integration?ref=0179859e6fafc567843cd55c0b05d325d5012dc4"
+  source                    = "github.com/ministryofjustice/modernisation-platform-terraform-pagerduty-integration?ref=d88bd90d490268896670a898edfaba24bba2f8ab" # v3.0.0
   sns_topics                = [aws_sns_topic.ddos_alarm[0].name]
   pagerduty_integration_key = local.pagerduty_integration_keys["ddos_cloudwatch"]
 }
