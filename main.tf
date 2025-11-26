@@ -303,7 +303,7 @@ resource "aws_iam_role" "cwl_to_core_logging" {
       {
         Effect = "Allow",
         Principal = {
-          Service = "logs.${data.aws_region.current.name}.amazonaws.com"
+          Service = "logs.${data.aws_region.current.region}.amazonaws.com"
         },
         Action = "sts:AssumeRole"
       }
