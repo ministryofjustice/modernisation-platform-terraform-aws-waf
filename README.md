@@ -146,7 +146,7 @@ If you're looking to raise an issue with this module, please create a new issue 
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_pagerduty_core_alerts"></a> [pagerduty\_core\_alerts](#module\_pagerduty\_core\_alerts) | github.com/ministryofjustice/modernisation-platform-terraform-pagerduty-integration | 0179859e6fafc567843cd55c0b05d325d5012dc4 |
+| <a name="module_pagerduty_core_alerts"></a> [pagerduty\_core\_alerts](#module\_pagerduty\_core\_alerts) | github.com/ministryofjustice/modernisation-platform-terraform-pagerduty-integration | d88bd90d490268896670a898edfaba24bba2f8ab |
 
 ## Resources
 
