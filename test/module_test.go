@@ -191,11 +191,15 @@ func testManagedRuleOverrideActions(t *testing.T, terraformOptions *terraform.Op
 		rulesByName[aws.StringValue(r.Name)] = r
 	}
 
+	// managedRuleNames should list the rule groups you're enabling in the unit-test fixture
 	for _, name := range managedRuleNames {
 		r, ok := rulesByName[name]
 		require.True(t, ok, "expected managed rule %s to exist", name)
 		require.NotNil(t, r.OverrideAction, "managed rule %s should have override_action", name)
-		assert.NotNil(t, r.OverrideAction.None, "managed rule %s should have override_action.none", name)
+
+		// FALSE => COUNT
+		assert.NotNil(t, r.OverrideAction.Count, "managed rule %s should have override_action.Count (because managed_rule_actions[%s] = false)", name, name)
+		assert.Nil(t, r.OverrideAction.None, "managed rule %s should NOT have override_action.None", name)
 	}
 }
 
