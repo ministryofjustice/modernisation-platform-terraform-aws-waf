@@ -1,10 +1,10 @@
-# Modernisation Platform Terraform Module Template 
+# Modernisation Platform Terraform Module Template
 
 [![Standards Icon]][Standards Link] [![Format Code Icon]][Format Code Link] [![Scorecards Icon]][Scorecards Link] [![SCA Icon]][SCA Link] [![Terraform SCA Icon]][Terraform SCA Link]
 
 ## 🚧 Known Issues & Limitations
 
-1. This module was created from a previous module here - https://github.com/ministryofjustice/modernisation-platform-terraform-waf
+1. This module was created from a previous module here - <https://github.com/ministryofjustice/modernisation-platform-terraform-waf>
 
 ## Why use this module?
 
@@ -44,7 +44,6 @@ For `associated_resource_arns` you can supply one or multiple ones.
 
 For `enable_ddos_protection` it covers what is currently offered in the FM module.
 
-
 ```hcl
 
 module "waf" {
@@ -62,10 +61,10 @@ module "waf" {
     AWSManagedRulesAnonymousIpList       = false
     AWSManagedRulesBotControlRuleSet     = false
   }
-  
+
   core_logging_account_id = local.environment_management.account_ids["core-logging-production"]
 
-  application_name = local.application_name        
+  application_name = local.application_name
   tags             = local.tags
 }
 
@@ -84,7 +83,7 @@ module "waf" {
   }
 ]
 
-  application_name = local.application_name        
+  application_name = local.application_name
   tags             = local.tags
 
 }
@@ -100,7 +99,6 @@ module "waf" {
 - Logging: CloudWatch log group + resource policy and a subscription filter to the core‑logging account.
 
 - DDoS alarm: rate‑based metric alarm and optional SNS topic → PagerDuty integration.
-
 
 ## Associating with resources
 
@@ -120,10 +118,10 @@ WAF logs contain security‑sensitive data; ensure access to the log group and t
 
 <!--- BEGIN_TF_DOCS --->
 
-
 <!--- END_TF_DOCS --->
 
 ## Looking for issues?
+
 If you're looking to raise an issue with this module, please create a new issue in the [Modernisation Platform repository](https://github.com/ministryofjustice/modernisation-platform/issues).
 
 <!-- BEGIN_TF_DOCS -->
@@ -131,22 +129,22 @@ If you're looking to raise an issue with this module, please create a new issue 
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.0.1 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 5.90 |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | ~> 1.0 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 6.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | ~> 5.90 |
-| <a name="provider_aws.modernisation-platform"></a> [aws.modernisation-platform](#provider\_aws.modernisation-platform) | ~> 5.90 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | ~> 6.0 |
+| <a name="provider_aws.modernisation-platform"></a> [aws.modernisation-platform](#provider\_aws.modernisation-platform) | ~> 6.0 |
 | <a name="provider_null"></a> [null](#provider\_null) | n/a |
 
 ## Modules
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_pagerduty_core_alerts"></a> [pagerduty\_core\_alerts](#module\_pagerduty\_core\_alerts) | github.com/ministryofjustice/modernisation-platform-terraform-pagerduty-integration | 0179859e6fafc567843cd55c0b05d325d5012dc4 |
+| <a name="module_pagerduty_core_alerts"></a> [pagerduty\_core\_alerts](#module\_pagerduty\_core\_alerts) | github.com/ministryofjustice/modernisation-platform-terraform-pagerduty-integration | d88bd90d490268896670a898edfaba24bba2f8ab |
 
 ## Resources
 
