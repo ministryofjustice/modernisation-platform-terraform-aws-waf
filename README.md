@@ -1,4 +1,4 @@
-# Modernisation Platform Terraform Module Template
+# Modernisation Platform Terraform AWS WAF Module
 
 [![Standards Icon]][Standards Link] [![Format Code Icon]][Format Code Link] [![Scorecards Icon]][Scorecards Link] [![SCA Icon]][SCA Link] [![Terraform SCA Icon]][Terraform SCA Link]
 
@@ -26,15 +26,15 @@
 
 ## Requirements
 
-- Terraform: >= 1.0.1
+- Terraform: ~> 1.0
 
-- Provider: hashicorp/aws ~> 5.90
+- Provider: hashicorp/aws ~> 6.0
 
 The module also expects access to the Modernisation Platform logging account ID when log shipping is enabled.
 
 ## Usage
 
-This module offers various WAF rules as a module, custom ones such as IP Address blocking from an ssm parameter, as well as AWS managed ones.
+This module offers various WAF rules as a module, custom ones such as IP Address blocking from an SSM parameter, as well as AWS-managed ones.
 
 With the `managed_rule_actions` if the bool is true, it will block traffic, false will leave it in a count mode.
 
