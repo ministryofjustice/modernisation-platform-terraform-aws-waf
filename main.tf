@@ -30,6 +30,21 @@ resource "aws_wafv2_ip_set" "mp_waf_ip_set" {
 }
 
 # ---------------------------------------------------------------------
+# 2b. Optional IP set used to scope-down the Bot Control managed rule
+#     group so it only inspects traffic from the given CIDRs
+#     (e.g. 34.0.0.0/8 for Google Cloud).
+# ---------------------------------------------------------------------
+resource "aws_wafv2_ip_set" "bot_control_scope_down" {
+  count              = length(var.bot_control_scope_down_cidrs) > 0 ? 1 : 0
+  name               = "${local.effective_web_acl_name}-bot-control-scope-down"
+  scope              = "REGIONAL"
+  ip_address_version = "IPV4"
+  description        = "CIDRs inspected by AWSManagedRulesBotControlRuleSet (scope-down)"
+  addresses          = var.bot_control_scope_down_cidrs
+  tags               = local.tags
+}
+
+# ---------------------------------------------------------------------
 # 3. CloudWatch log group for WAF logging (only if custom destination not given)
 # ---------------------------------------------------------------------
 resource "aws_cloudwatch_log_group" "mp_waf_cloudwatch_log_group" {
@@ -152,6 +167,32 @@ resource "aws_wafv2_web_acl" "mp_waf_acl" {
         managed_rule_group_statement {
           name        = rule.value.name
           vendor_name = rule.value.vendor_name
+
+          # AWSManagedRulesBotControlRuleSet requires an inspection level.
+          # Without this config block AWS reports InspectionLevel = UNKNOWN
+          # and the rule group does not evaluate bot traffic correctly.
+          dynamic "managed_rule_group_configs" {
+            for_each = rule.value.name == "AWSManagedRulesBotControlRuleSet" ? [1] : []
+            content {
+              aws_managed_rules_bot_control_rule_set {
+                inspection_level = var.bot_control_inspection_level
+              }
+            }
+          }
+
+          # Optional scope-down: only inspect traffic from the supplied CIDRs
+          # (e.g. 34.0.0.0/8), reducing Bot Control request charges.
+          dynamic "scope_down_statement" {
+            for_each = (
+              rule.value.name == "AWSManagedRulesBotControlRuleSet" &&
+              length(var.bot_control_scope_down_cidrs) > 0
+            ) ? [1] : []
+            content {
+              ip_set_reference_statement {
+                arn = aws_wafv2_ip_set.bot_control_scope_down[0].arn
+              }
+            }
+          }
         }
       }
 
@@ -202,6 +243,16 @@ dynamic "rule" {
           name        = rule.value.name
           vendor_name = coalesce(try(rule.value.vendor_name, null), "AWS")
           version     = try(rule.value.version, null)
+
+          # Bot Control requires an inspection level wherever it is attached.
+          dynamic "managed_rule_group_configs" {
+            for_each = rule.value.name == "AWSManagedRulesBotControlRuleSet" ? [1] : []
+            content {
+              aws_managed_rules_bot_control_rule_set {
+                inspection_level = var.bot_control_inspection_level
+              }
+            }
+          }
         }
       }
     }
