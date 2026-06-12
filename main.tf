@@ -9,9 +9,9 @@ data "aws_caller_identity" "current" {}
 # ---------------------------------------------------------------------
 resource "aws_ssm_parameter" "ip_block_list" {
   #checkov:skip=CKV_AWS_337:"Skipping KMS check as AWS-managed key is acceptable"
-  name   = var.ssm_parameter_name
-  type   = "SecureString"
-  value  = "[]" # Initialized empty list of blocked IPs
+  name  = var.ssm_parameter_name
+  type  = "SecureString"
+  value = "[]" # Initialized empty list of blocked IPs
   lifecycle {
     ignore_changes = [value] # Allows SOC to edit manually outside Terraform
   }
@@ -204,61 +204,61 @@ resource "aws_wafv2_web_acl" "mp_waf_acl" {
     }
   }
 
-# Optional: Additional rules (managed by name/vendor OR external by ARN)
-dynamic "rule" {
-  for_each = var.additional_managed_rules
-  content {
-    # Safe display name
-    name = lower(join(
-      "-",
-      regexall(
-        "[0-9A-Za-z_-]+",
-        coalesce(try(rule.value.name, null), try(rule.value.arn, null))
-      )
-    ))
+  # Optional: Additional rules (managed by name/vendor OR external by ARN)
+  dynamic "rule" {
+    for_each = var.additional_managed_rules
+    content {
+      # Safe display name
+      name = lower(join(
+        "-",
+        regexall(
+          "[0-9A-Za-z_-]+",
+          coalesce(try(rule.value.name, null), try(rule.value.arn, null))
+        )
+      ))
 
-    priority = try(rule.value.priority, 1000 + index(var.additional_managed_rules, rule.value))
+      priority = try(rule.value.priority, 1000 + index(var.additional_managed_rules, rule.value))
 
-    override_action {
-      dynamic "count" {
-        for_each = try(lower(rule.value.override_action), "none") == "count" ? [1] : []
-        content {}
+      override_action {
+        dynamic "count" {
+          for_each = try(lower(rule.value.override_action), "none") == "count" ? [1] : []
+          content {}
+        }
+        dynamic "none" {
+          for_each = try(lower(rule.value.override_action), "none") == "none" ? [1] : []
+          content {}
+        }
       }
-      dynamic "none" {
-        for_each = try(lower(rule.value.override_action), "none") == "none" ? [1] : []
-        content {}
-      }
-    }
 
-    statement {
-      # External by ARN
-      dynamic "rule_group_reference_statement" {
-        for_each = try(rule.value.arn, null) != null ? [1] : []
-        content { arn = rule.value.arn }
-      }
-      # Managed by name/vendor
-      dynamic "managed_rule_group_statement" {
-        for_each = try(rule.value.arn, null) == null ? [1] : []
-        content {
-          name        = rule.value.name
-          vendor_name = coalesce(try(rule.value.vendor_name, null), "AWS")
-          version     = try(rule.value.version, null)
+      statement {
+        # External by ARN
+        dynamic "rule_group_reference_statement" {
+          for_each = try(rule.value.arn, null) != null ? [1] : []
+          content { arn = rule.value.arn }
+        }
+        # Managed by name/vendor
+        dynamic "managed_rule_group_statement" {
+          for_each = try(rule.value.arn, null) == null ? [1] : []
+          content {
+            name        = rule.value.name
+            vendor_name = coalesce(try(rule.value.vendor_name, null), "AWS")
+            version     = try(rule.value.version, null)
 
-          # Bot Control requires an inspection level wherever it is attached.
-          dynamic "managed_rule_group_configs" {
-            for_each = rule.value.name == "AWSManagedRulesBotControlRuleSet" ? [1] : []
-            content {
-              aws_managed_rules_bot_control_rule_set {
-                inspection_level = var.bot_control_inspection_level
+            # Bot Control requires an inspection level wherever it is attached.
+            dynamic "managed_rule_group_configs" {
+              for_each = rule.value.name == "AWSManagedRulesBotControlRuleSet" ? [1] : []
+              content {
+                aws_managed_rules_bot_control_rule_set {
+                  inspection_level = var.bot_control_inspection_level
+                }
               }
             }
           }
         }
       }
-    }
 
-    visibility_config {
-      cloudwatch_metrics_enabled = true
+      visibility_config {
+        cloudwatch_metrics_enabled = true
         metric_name = lower(join(
           "-",
           regexall(
@@ -266,10 +266,10 @@ dynamic "rule" {
             coalesce(try(rule.value.name, null), try(rule.value.arn, null))
           )
         ))
-      sampled_requests_enabled = true
+        sampled_requests_enabled = true
+      }
     }
   }
-}
 
 
 
@@ -311,8 +311,8 @@ data "aws_iam_policy_document" "waf" {
     actions = ["logs:CreateLogStream", "logs:PutLogEvents"]
     resources = [
       var.log_destination_arn != null
-        ? "${var.log_destination_arn}:*"
-        : "${aws_cloudwatch_log_group.mp_waf_cloudwatch_log_group[0].arn}:*"
+      ? "${var.log_destination_arn}:*"
+      : "${aws_cloudwatch_log_group.mp_waf_cloudwatch_log_group[0].arn}:*"
     ]
   }
 }
@@ -325,10 +325,10 @@ resource "aws_cloudwatch_log_resource_policy" "mp_waf_log_policy" {
 resource "aws_wafv2_web_acl_logging_configuration" "mp_waf_log_config" {
   resource_arn = aws_wafv2_web_acl.mp_waf_acl.arn
   log_destination_configs = [
-      var.log_destination_arn != null
-        ? var.log_destination_arn
-        : aws_cloudwatch_log_group.mp_waf_cloudwatch_log_group[0].arn
-    ]
+    var.log_destination_arn != null
+    ? var.log_destination_arn
+    : aws_cloudwatch_log_group.mp_waf_cloudwatch_log_group[0].arn
+  ]
 
   depends_on = [aws_cloudwatch_log_resource_policy.mp_waf_log_policy]
 }
