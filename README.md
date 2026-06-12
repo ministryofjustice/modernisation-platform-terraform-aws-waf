@@ -44,6 +44,25 @@ For `associated_resource_arns` you can supply one or multiple ones.
 
 For `enable_ddos_protection` it covers what is currently offered in the FM module.
 
+### Bot Control (AWSManagedRulesBotControlRuleSet)
+
+The Bot Control managed rule group requires an inspection level, unlike the other AWS managed rule groups. The module sets this for you via `bot_control_inspection_level`, which defaults to `COMMON` (suitable for most use cases). Set it to `TARGETED` only if you need detection of sophisticated, targeted bots — this carries additional AWS charges.
+
+Optionally, `bot_control_scope_down_cidrs` restricts Bot Control to only inspect traffic from specific source CIDRs (for example Google Cloud's `34.0.0.0/8`). This reduces Bot Control request charges and focuses the rule group on known bot sources:
+
+```hcl
+module "waf" {
+  # ...
+  bot_control_inspection_level = "COMMON"          # default; or "TARGETED"
+  bot_control_scope_down_cidrs = ["34.0.0.0/8"]    # optional; inspect only GCP traffic
+  managed_rule_actions = {
+    AWSManagedRulesBotControlRuleSet = false        # false = count (monitor) mode
+  }
+}
+```
+
+Note: AWS bills Bot Control as a per-request add-on once the rule group is attached to a Web ACL, even in count mode (scope-down reduces the number of billed requests).
+
 ```hcl
 
 module "waf" {
@@ -153,6 +172,7 @@ If you're looking to raise an issue with this module, please create a new issue 
 | [aws_sns_topic.ddos_alarm](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sns_topic) | resource |
 | [aws_sns_topic.module_ddos_alarm](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sns_topic) | resource |
 | [aws_ssm_parameter.ip_block_list](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
+| [aws_wafv2_ip_set.bot_control_scope_down](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/wafv2_ip_set) | resource |
 | [aws_wafv2_ip_set.mp_waf_ip_set](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/wafv2_ip_set) | resource |
 | [aws_wafv2_web_acl.mp_waf_acl](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/wafv2_web_acl) | resource |
 | [aws_wafv2_web_acl_association.mp_waf_acl_association](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/wafv2_web_acl_association) | resource |
@@ -174,6 +194,8 @@ If you're looking to raise an issue with this module, please create a new issue 
 | <a name="input_associated_resource_arns"></a> [associated\_resource\_arns](#input\_associated\_resource\_arns) | List of resource ARNs (e.g. ALB, CloudFront distribution) to associate with the Web ACL. | `list(string)` | `[]` | no |
 | <a name="input_block_non_uk_traffic"></a> [block\_non\_uk\_traffic](#input\_block\_non\_uk\_traffic) | If true, add a WAF rule that blocks any request not originating from the United Kingdom (GB). | `bool` | `false` | no |
 | <a name="input_blocked_ip_rule_priority"></a> [blocked\_ip\_rule\_priority](#input\_blocked\_ip\_rule\_priority) | Priority for the IP-set 'blocked-ip' rule. | `number` | `1` | no |
+| <a name="input_bot_control_inspection_level"></a> [bot\_control\_inspection\_level](#input\_bot\_control\_inspection\_level) | Inspection level for AWSManagedRulesBotControlRuleSet. "COMMON" (default) detects common and self-identifying bots. "TARGETED" adds machine-learning detections for sophisticated bots at additional cost. | `string` | `"COMMON"` | no |
+| <a name="input_bot_control_scope_down_cidrs"></a> [bot\_control\_scope\_down\_cidrs](#input\_bot\_control\_scope\_down\_cidrs) | Optional list of IPv4 CIDR ranges. When non-empty, AWSManagedRulesBotControlRuleSet only inspects requests whose source IP matches one of these CIDRs (e.g. ["34.0.0.0/8"]). When empty (default), Bot Control inspects all traffic reaching it. | `list(string)` | `[]` | no |
 | <a name="input_core_logging_account_id"></a> [core\_logging\_account\_id](#input\_core\_logging\_account\_id) | Account ID for core logging. | `string` | `""` | no |
 | <a name="input_ddos_alarm_resources"></a> [ddos\_alarm\_resources](#input\_ddos\_alarm\_resources) | Map of resources to monitor for DDoS alarms. Each value must contain 'arn'. | <pre>map(object({<br/>    arn = string<br/>  }))</pre> | `{}` | no |
 | <a name="input_ddos_rate_limit"></a> [ddos\_rate\_limit](#input\_ddos\_rate\_limit) | Requests per 5-minute window that triggers the DDoS rate-based block. Required when enable\_ddos\_protection = true. | `number` | n/a | yes |

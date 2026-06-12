@@ -120,6 +120,40 @@ EOT
   ]
 }
 
+###############################################################################
+# Bot Control (AWSManagedRulesBotControlRuleSet) configuration
+###############################################################################
+
+# Inspection level passed to the Bot Control managed rule group.
+# COMMON  - detects self-identifying / common bots (default, covers ~99% of use cases).
+# TARGETED - adds detection for sophisticated bots; higher WCU usage and cost.
+variable "bot_control_inspection_level" {
+  description = "Inspection level for AWSManagedRulesBotControlRuleSet. \"COMMON\" (default) detects common and self-identifying bots. \"TARGETED\" adds machine-learning detections for sophisticated bots at additional cost."
+  type        = string
+  default     = "COMMON"
+
+  validation {
+    condition     = contains(["COMMON", "TARGETED"], var.bot_control_inspection_level)
+    error_message = "bot_control_inspection_level must be either \"COMMON\" or \"TARGETED\"."
+  }
+}
+
+# Optional scope-down for Bot Control: when set, the rule group only inspects
+# requests originating from these CIDRs (e.g. ["34.0.0.0/8"] for GCP traffic).
+variable "bot_control_scope_down_cidrs" {
+  description = "Optional list of IPv4 CIDR ranges. When non-empty, AWSManagedRulesBotControlRuleSet only inspects requests whose source IP matches one of these CIDRs (e.g. [\"34.0.0.0/8\"]). When empty (default), Bot Control inspects all traffic reaching it."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for cidr in var.bot_control_scope_down_cidrs :
+      can(cidrhost(cidr, 0))
+    ])
+    error_message = "Each entry in bot_control_scope_down_cidrs must be a valid IPv4 CIDR (e.g. \"34.0.0.0/8\")."
+  }
+}
+
 # Explicit override for managed rule actions (true = block, false = count)
 variable "managed_rule_actions" {
   description = "Map of AWS Managed Rule Group names to boolean flag indicating whether to block (true) or count (false)."
@@ -143,7 +177,7 @@ EOT
     vendor_name = optional(string)
     version     = optional(string)
     # External path:
-    arn         = optional(string)
+    arn = optional(string)
 
     override_action = optional(string) # "none" | "count"
     priority        = optional(number)
@@ -255,8 +289,8 @@ Map of AWS Managed Rule Group names to explicit priority integers.
 Lower numbers are evaluated first (higher priority).
 If omitted for a rule, a sensible default order is used (10,20,30…).
 EOT
-  type    = map(number)
-  default = {}
+  type        = map(number)
+  default     = {}
 
   validation {
     condition = alltrue([

@@ -52,6 +52,9 @@ func TestWAFModule(t *testing.T) {
 	t.Run("RateLimitRuleHasConfiguredLimit", func(t *testing.T) {
 		testRateLimitRuleLimit(t, terraformOptions, awsRegion, int64(1500))
 	})
+	t.Run("BotControlInspectionLevel", func(t *testing.T) {
+		testBotControlInspectionLevel(t, terraformOptions, awsRegion, "COMMON")
+	})
 }
 
 func testOutputsNotEmpty(t *testing.T, terraformOptions *terraform.Options) {
@@ -201,6 +204,49 @@ func testManagedRuleOverrideActions(t *testing.T, terraformOptions *terraform.Op
 		assert.NotNil(t, r.OverrideAction.Count, "managed rule %s should have override_action.Count (because managed_rule_actions[%s] = false)", name, name)
 		assert.Nil(t, r.OverrideAction.None, "managed rule %s should NOT have override_action.None", name)
 	}
+}
+
+// testBotControlInspectionLevel verifies that AWSManagedRulesBotControlRuleSet
+// is deployed with the expected inspection level (default "COMMON"). Without
+// the managed_rule_group_configs block, AWS reports InspectionLevel = UNKNOWN
+// and the rule group does not evaluate bot traffic correctly.
+func testBotControlInspectionLevel(t *testing.T, terraformOptions *terraform.Options, awsRegion string, expectedLevel string) {
+	webAclArn := terraform.Output(t, terraformOptions, "web_acl_arn")
+	webAclId := getResourceIdFromArn(webAclArn)
+	webAclName := getResourceNameFromArn(webAclArn)
+
+	wafClient := newWAFv2Client(awsRegion)
+	resp, err := wafClient.GetWebACL(&wafv2.GetWebACLInput{
+		Id:    aws.String(webAclId),
+		Name:  aws.String(webAclName),
+		Scope: aws.String("REGIONAL"),
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp.WebACL)
+
+	var botRule *wafv2.Rule
+	for _, r := range resp.WebACL.Rules {
+		if aws.StringValue(r.Name) == "AWSManagedRulesBotControlRuleSet" {
+			botRule = r
+			break
+		}
+	}
+	require.NotNil(t, botRule, "expected AWSManagedRulesBotControlRuleSet rule to exist")
+	require.NotNil(t, botRule.Statement, "Bot Control rule should have a statement")
+	require.NotNil(t, botRule.Statement.ManagedRuleGroupStatement, "Bot Control rule should use a managed_rule_group_statement")
+
+	configs := botRule.Statement.ManagedRuleGroupStatement.ManagedRuleGroupConfigs
+	require.NotEmpty(t, configs, "Bot Control rule should have managed_rule_group_configs (otherwise InspectionLevel is UNKNOWN)")
+
+	found := false
+	for _, c := range configs {
+		if c.AWSManagedRulesBotControlRuleSet != nil {
+			found = true
+			assert.Equal(t, expectedLevel, aws.StringValue(c.AWSManagedRulesBotControlRuleSet.InspectionLevel),
+				"Bot Control inspection level should default to %s", expectedLevel)
+		}
+	}
+	assert.True(t, found, "expected an aws_managed_rules_bot_control_rule_set config block")
 }
 
 func testPrioritiesUniqueAndReserved(t *testing.T, terraformOptions *terraform.Options, awsRegion string) {
