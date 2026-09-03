@@ -1,28 +1,93 @@
+# Dependabot configuration for Modernisation Platform Terraform Modules
+#
+# This is a direct edit of the dependabot.yml already shipped in
+# modernisation-platform-terraform-module-template - same three ecosystems,
+# same directories, just retuned per the new dependency management strategy
+# (see ways-of-engineering-dependency-strategy.md).
+#
+# Strategy:
+#   1. Security vulnerabilities (highest priority)
+#      Always raised immediately, however everything else below is configured.
+#      Controlled by two REPO SETTINGS, not this file: Dependabot alerts +
+#      Dependabot security updates. `cooldown` never delays a security fix -
+#      GitHub explicitly exempts security updates from cooldown.
+#
+#   2. Major version upgrades (medium priority)
+#      github-actions: checked ~fortnightly (cron on the 1st/15th - GitHub's
+#      schedule.interval has no literal "every 2 weeks" option), raised as
+#      soon as found (0-day cooldown), grouped into one PR.
+#      terraform / gomod: checked monthly, still grouped separately from
+#      minor/patch for visibility, but on the same cooldown as everything
+#      else in that ecosystem (see note below).
+#
+#   3. Minor/patch upgrades (low priority)
+#      github-actions: cooldown-delayed 90 days (GitHub's current max - no
+#      native "every 6 months" option) via semver-minor-days/semver-patch-days,
+#      then grouped into one PR.
+#      terraform / gomod: cooldown-delayed 90 days via default-days. We did
+#      NOT apply a differentiated 0-day cooldown to majors here: GitHub's
+#      docs indicate semver-specific cooldown days aren't confirmed for
+#      every ecosystem, so majors for these two ecosystems get the same
+#      90-day gate as minor/patch for now, just in a separate PR group so
+#      they're still easy to spot and prioritise on review. Worth revisiting
+#      if/when semver-major-days is confirmed to work for terraform/gomod.
+#
+# If a functional change needs a newer minor/patch version sooner (e.g. a
+# new provider feature), bump it manually rather than waiting on Dependabot.
+
 version: 2
 updates:
   - package-ecosystem: "terraform"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "monthly"
+      timezone: "Europe/London"
     cooldown:
-      default-days: 7
+      default-days: 90
+    groups:
+      terraform-major:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["major"]
+      terraform-minor-patch:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "cron"
+      cron: "0 6 1,15 * *" # 06:00 on the 1st & 15th of each month (~fortnightly)
+      timezone: "Europe/London"
     cooldown:
-      default-days: 7
+      default-days: 90
+      semver-major-days: 0 # no delay - we want majors promptly
+      semver-minor-days: 90
+      semver-patch-days: 90
     groups:
-      action-dependencies:
-        patterns:
-          - "*"
+      github-actions-major:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["major"]
+      github-actions-minor-patch:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
   - package-ecosystem: "gomod"
     directory: "/test"
     schedule:
-      interval: "daily"
+      interval: "monthly"
+      timezone: "Europe/London"
     cooldown:
-      default-days: 7
+      default-days: 90
     groups:
-      gomod-dependencies:
-        patterns:
-          - "*"
+      gomod-major:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["major"]
+      gomod-minor-patch:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
