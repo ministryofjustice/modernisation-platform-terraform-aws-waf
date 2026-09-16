@@ -53,8 +53,8 @@ locals {
   #   false => override_action = "count" (count only)
   managed_rule_groups_with_priority = [
     for name in local.default_managed_rule_order : {
-      name            = name
-      vendor_name     = "AWS"
+      name        = name
+      vendor_name = "AWS"
       # true  => none  (respect vendor actions; typically block)
       # false => count (count only)
       override_action = (try(var.managed_rule_actions[name], false) ? "none" : "count")
@@ -67,15 +67,15 @@ locals {
   # Sanity checks to prevent collisions
   #########################################
 
-# Static priorities already consumed by fixed rules in main.tf
-# - Blocked IP set: priority = var.blocked_ip_rule_priority
-# - DDoS rate-limit: priority = 2 (when enabled)
-# - Geo block (allow only GB): priority = 3 (when enabled)
-static_priorities_in_use = concat(
-  [var.blocked_ip_rule_priority],
-  var.enable_ddos_protection ? [2] : [],
-  var.block_non_uk_traffic ? [3] : []
-)
+  # Static priorities already consumed by fixed rules in main.tf
+  # - Blocked IP set: priority = var.blocked_ip_rule_priority
+  # - DDoS rate-limit: priority = 2 (when enabled)
+  # - Geo block (allow only GB): priority = 3 (when enabled)
+  static_priorities_in_use = concat(
+    [var.blocked_ip_rule_priority],
+    var.enable_ddos_protection ? [2] : [],
+    var.block_non_uk_traffic ? [3] : []
+  )
 
 
   managed_priorities = [for r in local.managed_rule_groups_with_priority : r.priority]
