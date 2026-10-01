@@ -8,7 +8,6 @@ module "waf" {
   core_logging_account_id      = local.environment_management.account_ids["testing-test"]
   enable_ddos_protection       = true
   ddos_rate_limit              = 1500
-  block_non_uk_traffic         = true
   managed_rule_actions = {
     AWSManagedRulesKnownBadInputsRuleSet = false
     AWSManagedRulesCommonRuleSet         = false

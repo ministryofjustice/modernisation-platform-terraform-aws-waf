@@ -45,13 +45,6 @@ variable "blocked_ip_rule_priority" {
 # Networking / geographic blocking
 ###############################################################################
 
-# Block traffic from outside the United Kingdom (GB) if true
-variable "block_non_uk_traffic" {
-  description = "If true, add a WAF rule that blocks any request not originating from the United Kingdom (GB)."
-  type        = bool
-  default     = false
-}
-
 # IPv4 or IPv6 selection for the WAF IP set
 variable "ip_address_version" {
   description = "IP version for the IP set (IPV4 or IPV6)."

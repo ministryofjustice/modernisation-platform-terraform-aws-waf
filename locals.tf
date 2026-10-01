@@ -70,11 +70,11 @@ locals {
   # Static priorities already consumed by fixed rules in main.tf
   # - Blocked IP set: priority = var.blocked_ip_rule_priority
   # - DDoS rate-limit: priority = 2 (when enabled)
-  # - Geo block (allow only GB): priority = 3 (when enabled)
+  # - Geo block (allow only GB): priority = 3 (enabled by default)
   static_priorities_in_use = concat(
     [var.blocked_ip_rule_priority],
     var.enable_ddos_protection ? [2] : [],
-    var.block_non_uk_traffic ? [3] : []
+    [3]
   )
 
 

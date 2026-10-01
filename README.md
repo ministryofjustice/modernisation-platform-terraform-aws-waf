@@ -70,7 +70,6 @@ module "waf" {
   enable_pagerduty_integration = true
   enable_ddos_protection = true
   ddos_rate_limit        = 5000
-  block_non_uk_traffic   = false
   associated_resource_arns = [aws_lb.waf_lb.arn]
   managed_rule_actions = {
     AWSManagedRulesKnownBadInputsRuleSet = false
@@ -192,7 +191,6 @@ If you're looking to raise an issue with this module, please create a new issue 
 | <a name="input_additional_managed_rules"></a> [additional\_managed\_rules](#input\_additional\_managed\_rules) | Additional rule attachments to include in the WebACL.<br/>Supply either:<br/>- Managed: { name, vendor\_name, version?, override\_action?, priority? }<br/>- External by ARN: { arn, override\_action?, priority? }<br/><br/>If 'priority' is omitted, a fallback of 1000 + index(...) is used. | <pre>list(object({<br/>    # Managed path:<br/>    name        = optional(string)<br/>    vendor_name = optional(string)<br/>    version     = optional(string)<br/>    # External path:<br/>    arn = optional(string)<br/><br/>    override_action = optional(string) # "none" | "count"<br/>    priority        = optional(number)<br/>  }))</pre> | `[]` | no |
 | <a name="input_application_name"></a> [application\_name](#input\_application\_name) | Application identifier used for naming and tagging. | `string` | n/a | yes |
 | <a name="input_associated_resource_arns"></a> [associated\_resource\_arns](#input\_associated\_resource\_arns) | List of resource ARNs (e.g. ALB, CloudFront distribution) to associate with the Web ACL. | `list(string)` | `[]` | no |
-| <a name="input_block_non_uk_traffic"></a> [block\_non\_uk\_traffic](#input\_block\_non\_uk\_traffic) | If true, add a WAF rule that blocks any request not originating from the United Kingdom (GB). | `bool` | `false` | no |
 | <a name="input_blocked_ip_rule_priority"></a> [blocked\_ip\_rule\_priority](#input\_blocked\_ip\_rule\_priority) | Priority for the IP-set 'blocked-ip' rule. | `number` | `1` | no |
 | <a name="input_bot_control_inspection_level"></a> [bot\_control\_inspection\_level](#input\_bot\_control\_inspection\_level) | Inspection level for AWSManagedRulesBotControlRuleSet. "COMMON" (default) detects common and self-identifying bots. "TARGETED" adds machine-learning detections for sophisticated bots at additional cost. | `string` | `"COMMON"` | no |
 | <a name="input_bot_control_scope_down_cidrs"></a> [bot\_control\_scope\_down\_cidrs](#input\_bot\_control\_scope\_down\_cidrs) | Optional list of IPv4 CIDR ranges. When non-empty, AWSManagedRulesBotControlRuleSet only inspects requests whose source IP matches one of these CIDRs (e.g. ["34.0.0.0/8"]). When empty (default), Bot Control inspects all traffic reaching it. | `list(string)` | `[]` | no |
