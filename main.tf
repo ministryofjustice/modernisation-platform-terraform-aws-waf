@@ -124,7 +124,7 @@ resource "aws_wafv2_web_acl" "mp_waf_acl" {
     action {
       block {}
     }
-    
+
     statement {
       not_statement {
         statement {
