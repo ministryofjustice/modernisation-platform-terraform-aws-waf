@@ -116,32 +116,29 @@ resource "aws_wafv2_web_acl" "mp_waf_acl" {
     }
   }
 
-  # Rule 3: Optional geo-block (allow only UK)
-  dynamic "rule" {
-    for_each = var.block_non_uk_traffic ? [1] : []
-    content {
-      name     = "block-non-uk"
-      priority = 3
+  # Rule 3: geo-block (allow only UK)
+  rule {
+    name     = "block-non-uk"
+    priority = 3
 
-      action {
-        block {}
-      }
-
-      statement {
-        not_statement {
-          statement {
-            geo_match_statement {
-              country_codes = ["GB"]
-            }
+    action {
+      block {}
+    }
+    
+    statement {
+      not_statement {
+        statement {
+          geo_match_statement {
+            country_codes = ["GB"]
           }
         }
       }
+    }
 
-      visibility_config {
-        cloudwatch_metrics_enabled = true
-        metric_name                = "block-non-uk"
-        sampled_requests_enabled   = true
-      }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "block-non-uk"
+      sampled_requests_enabled   = true
     }
   }
 
