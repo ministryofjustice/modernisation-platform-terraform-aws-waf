@@ -4,9 +4,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/wafv2"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/wafv2"
+	"github.com/aws/aws-sdk-go-v2/service/wafv2/types"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -72,21 +73,21 @@ func testWebACLStructure(t *testing.T, terraformOptions *terraform.Options, awsR
 	webAclId := getResourceIdFromArn(webAclArn)
 	webAclName := getResourceNameFromArn(webAclArn)
 
-	wafClient := newWAFv2Client(awsRegion)
+	wafClient := newWAFv2Client(t, awsRegion)
 
-	webAcl, err := wafClient.GetWebACL(&wafv2.GetWebACLInput{
+	webAcl, err := wafClient.GetWebACL(t.Context(), &wafv2.GetWebACLInput{
 		Id:    aws.String(webAclId),
 		Name:  aws.String(webAclName),
-		Scope: aws.String("REGIONAL"),
+		Scope: types.ScopeRegional,
 	})
 	require.NoError(t, err, "Failed to fetch WAF WebACL")
 	require.NotNil(t, webAcl.WebACL)
 
-	assert.Equal(t, webAclName, aws.StringValue(webAcl.WebACL.Name))
+	assert.Equal(t, webAclName, aws.ToString(webAcl.WebACL.Name))
 
 	ruleNames := map[string]bool{}
 	for _, r := range webAcl.WebACL.Rules {
-		ruleNames[aws.StringValue(r.Name)] = true
+		ruleNames[aws.ToString(r.Name)] = true
 	}
 
 	assert.True(t, ruleNames[webAclName+"-blocked-ip"], "Expected 'blocked-ip' rule to exist")
@@ -99,12 +100,12 @@ func testIPSetExistsAndHasAddresses(t *testing.T, terraformOptions *terraform.Op
 	ipSetId := getResourceIdFromArn(ipSetArn)
 	ipSetName := getResourceNameFromArn(ipSetArn)
 
-	wafClient := newWAFv2Client(awsRegion)
+	wafClient := newWAFv2Client(t, awsRegion)
 
-	ipSet, err := wafClient.GetIPSet(&wafv2.GetIPSetInput{
+	ipSet, err := wafClient.GetIPSet(t.Context(), &wafv2.GetIPSetInput{
 		Id:    aws.String(ipSetId),
 		Name:  aws.String(ipSetName),
-		Scope: aws.String("REGIONAL"),
+		Scope: types.ScopeRegional,
 	})
 	require.NoError(t, err, "Failed to fetch IP Set")
 	require.NotNil(t, ipSet.IPSet)
@@ -115,27 +116,26 @@ func testWebACLLoggingConfiguration(t *testing.T, terraformOptions *terraform.Op
 	webAclArn := terraform.Output(t, terraformOptions, "web_acl_arn")
 	expectedLogGroupArn := terraform.Output(t, terraformOptions, "waf_log_group_arn")
 
-	wafClient := newWAFv2Client(awsRegion)
+	wafClient := newWAFv2Client(t, awsRegion)
 
-	logConfig, err := wafClient.GetLoggingConfiguration(&wafv2.GetLoggingConfigurationInput{
+	logConfig, err := wafClient.GetLoggingConfiguration(t.Context(), &wafv2.GetLoggingConfigurationInput{
 		ResourceArn: aws.String(webAclArn),
 	})
 	require.NoError(t, err, "Expected WAF logging configuration to be retrievable")
 	require.NotNil(t, logConfig.LoggingConfiguration)
 
-	assert.Equal(t, webAclArn, aws.StringValue(logConfig.LoggingConfiguration.ResourceArn), "Logging config should reference the WebACL ARN")
+	assert.Equal(t, webAclArn, aws.ToString(logConfig.LoggingConfiguration.ResourceArn), "Logging config should reference the WebACL ARN")
 	require.NotEmpty(t, logConfig.LoggingConfiguration.LogDestinationConfigs, "Logging config should have at least one destination")
 
 	foundDest := false
 	for _, d := range logConfig.LoggingConfiguration.LogDestinationConfigs {
-		if aws.StringValue(d) == expectedLogGroupArn {
+		if d == expectedLogGroupArn {
 			foundDest = true
 			break
 		}
 	}
 	assert.True(t, foundDest, "Logging destination should match waf_log_group_arn output")
 }
-
 
 var managedRuleNames = []string{
 	"AWSManagedRulesKnownBadInputsRuleSet",
@@ -151,28 +151,27 @@ func testManagedRulePriorities(t *testing.T, terraformOptions *terraform.Options
 	webAclId := getResourceIdFromArn(webAclArn)
 	webAclName := getResourceNameFromArn(webAclArn)
 
-	wafClient := newWAFv2Client(awsRegion)
-	resp, err := wafClient.GetWebACL(&wafv2.GetWebACLInput{
+	wafClient := newWAFv2Client(t, awsRegion)
+	resp, err := wafClient.GetWebACL(t.Context(), &wafv2.GetWebACLInput{
 		Id:    aws.String(webAclId),
 		Name:  aws.String(webAclName),
-		Scope: aws.String("REGIONAL"),
+		Scope: types.ScopeRegional,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, resp.WebACL)
 
-	prios := map[string]int64{}
+	prios := map[string]int32{}
 	for _, r := range resp.WebACL.Rules {
-		prios[aws.StringValue(r.Name)] = aws.Int64Value(r.Priority)
+		prios[aws.ToString(r.Name)] = r.Priority
 	}
 
+	assert.Equal(t, int32(5), prios["AWSManagedRulesSQLiRuleSet"])
+	assert.Equal(t, int32(6), prios["AWSManagedRulesKnownBadInputsRuleSet"])
+	assert.Equal(t, int32(7), prios["AWSManagedRulesCommonRuleSet"])
 
-	assert.Equal(t, int64(5), prios["AWSManagedRulesSQLiRuleSet"])
-	assert.Equal(t, int64(6), prios["AWSManagedRulesKnownBadInputsRuleSet"])
-	assert.Equal(t, int64(7), prios["AWSManagedRulesCommonRuleSet"])
-
-	assert.Equal(t, int64(40), prios["AWSManagedRulesLinuxRuleSet"])
-	assert.Equal(t, int64(50), prios["AWSManagedRulesAnonymousIpList"])
-	assert.Equal(t, int64(60), prios["AWSManagedRulesBotControlRuleSet"])
+	assert.Equal(t, int32(40), prios["AWSManagedRulesLinuxRuleSet"])
+	assert.Equal(t, int32(50), prios["AWSManagedRulesAnonymousIpList"])
+	assert.Equal(t, int32(60), prios["AWSManagedRulesBotControlRuleSet"])
 }
 
 func testManagedRuleOverrideActions(t *testing.T, terraformOptions *terraform.Options, awsRegion string) {
@@ -180,18 +179,18 @@ func testManagedRuleOverrideActions(t *testing.T, terraformOptions *terraform.Op
 	webAclId := getResourceIdFromArn(webAclArn)
 	webAclName := getResourceNameFromArn(webAclArn)
 
-	wafClient := newWAFv2Client(awsRegion)
-	resp, err := wafClient.GetWebACL(&wafv2.GetWebACLInput{
+	wafClient := newWAFv2Client(t, awsRegion)
+	resp, err := wafClient.GetWebACL(t.Context(), &wafv2.GetWebACLInput{
 		Id:    aws.String(webAclId),
 		Name:  aws.String(webAclName),
-		Scope: aws.String("REGIONAL"),
+		Scope: types.ScopeRegional,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, resp.WebACL)
 
-	rulesByName := map[string]*wafv2.Rule{}
+	rulesByName := map[string]types.Rule{}
 	for _, r := range resp.WebACL.Rules {
-		rulesByName[aws.StringValue(r.Name)] = r
+		rulesByName[aws.ToString(r.Name)] = r
 	}
 
 	// managedRuleNames should list the rule groups you're enabling in the unit-test fixture
@@ -215,19 +214,19 @@ func testBotControlInspectionLevel(t *testing.T, terraformOptions *terraform.Opt
 	webAclId := getResourceIdFromArn(webAclArn)
 	webAclName := getResourceNameFromArn(webAclArn)
 
-	wafClient := newWAFv2Client(awsRegion)
-	resp, err := wafClient.GetWebACL(&wafv2.GetWebACLInput{
+	wafClient := newWAFv2Client(t, awsRegion)
+	resp, err := wafClient.GetWebACL(t.Context(), &wafv2.GetWebACLInput{
 		Id:    aws.String(webAclId),
 		Name:  aws.String(webAclName),
-		Scope: aws.String("REGIONAL"),
+		Scope: types.ScopeRegional,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, resp.WebACL)
 
-	var botRule *wafv2.Rule
+	var botRule *types.Rule
 	for _, r := range resp.WebACL.Rules {
-		if aws.StringValue(r.Name) == "AWSManagedRulesBotControlRuleSet" {
-			botRule = r
+		if aws.ToString(r.Name) == "AWSManagedRulesBotControlRuleSet" {
+			botRule = &r
 			break
 		}
 	}
@@ -242,7 +241,7 @@ func testBotControlInspectionLevel(t *testing.T, terraformOptions *terraform.Opt
 	for _, c := range configs {
 		if c.AWSManagedRulesBotControlRuleSet != nil {
 			found = true
-			assert.Equal(t, expectedLevel, aws.StringValue(c.AWSManagedRulesBotControlRuleSet.InspectionLevel),
+			assert.Equal(t, expectedLevel, string(c.AWSManagedRulesBotControlRuleSet.InspectionLevel),
 				"Bot Control inspection level should default to %s", expectedLevel)
 		}
 	}
@@ -254,22 +253,22 @@ func testPrioritiesUniqueAndReserved(t *testing.T, terraformOptions *terraform.O
 	webAclId := getResourceIdFromArn(webAclArn)
 	webAclName := getResourceNameFromArn(webAclArn)
 
-	wafClient := newWAFv2Client(awsRegion)
-	resp, err := wafClient.GetWebACL(&wafv2.GetWebACLInput{
+	wafClient := newWAFv2Client(t, awsRegion)
+	resp, err := wafClient.GetWebACL(t.Context(), &wafv2.GetWebACLInput{
 		Id:    aws.String(webAclId),
 		Name:  aws.String(webAclName),
-		Scope: aws.String("REGIONAL"),
+		Scope: types.ScopeRegional,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, resp.WebACL)
 
-	seen := map[int64]string{}
+	seen := map[int32]string{}
 	for _, r := range resp.WebACL.Rules {
-		p := aws.Int64Value(r.Priority)
+		p := r.Priority
 		if prev, exists := seen[p]; exists {
-			t.Fatalf("Duplicate priority %d between rules %q and %q", p, prev, aws.StringValue(r.Name))
+			t.Fatalf("Duplicate priority %d between rules %q and %q", p, prev, aws.ToString(r.Name))
 		}
-		seen[p] = aws.StringValue(r.Name)
+		seen[p] = aws.ToString(r.Name)
 	}
 
 	assert.Equal(t, webAclName+"-blocked-ip", seen[1])
@@ -282,19 +281,19 @@ func testRateLimitRuleLimit(t *testing.T, terraformOptions *terraform.Options, a
 	webAclId := getResourceIdFromArn(webAclArn)
 	webAclName := getResourceNameFromArn(webAclArn)
 
-	wafClient := newWAFv2Client(awsRegion)
-	resp, err := wafClient.GetWebACL(&wafv2.GetWebACLInput{
+	wafClient := newWAFv2Client(t, awsRegion)
+	resp, err := wafClient.GetWebACL(t.Context(), &wafv2.GetWebACLInput{
 		Id:    aws.String(webAclId),
 		Name:  aws.String(webAclName),
-		Scope: aws.String("REGIONAL"),
+		Scope: types.ScopeRegional,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, resp.WebACL)
 
-	var rateRule *wafv2.Rule
+	var rateRule *types.Rule
 	for _, r := range resp.WebACL.Rules {
-		if aws.StringValue(r.Name) == "shield-block" {
-			rateRule = r
+		if aws.ToString(r.Name) == "shield-block" {
+			rateRule = &r
 			break
 		}
 	}
@@ -302,9 +301,8 @@ func testRateLimitRuleLimit(t *testing.T, terraformOptions *terraform.Options, a
 
 	require.NotNil(t, rateRule.Statement, "shield-block should have a statement")
 	require.NotNil(t, rateRule.Statement.RateBasedStatement, "shield-block should have a rate_based_statement")
-	assert.Equal(t, expectedLimit, aws.Int64Value(rateRule.Statement.RateBasedStatement.Limit))
+	assert.Equal(t, expectedLimit, aws.ToInt64(rateRule.Statement.RateBasedStatement.Limit))
 }
-
 
 func getResourceIdFromArn(arn string) string {
 	parts := strings.Split(arn, "/")
@@ -319,7 +317,10 @@ func getResourceNameFromArn(arn string) string {
 	return ""
 }
 
-func newWAFv2Client(region string) *wafv2.WAFV2 {
-	sess := session.Must(session.NewSession(&aws.Config{Region: aws.String(region)}))
-	return wafv2.New(sess)
+func newWAFv2Client(t *testing.T, region string) *wafv2.Client {
+	t.Helper()
+
+	cfg, err := config.LoadDefaultConfig(t.Context(), config.WithRegion(region))
+	require.NoError(t, err, "Failed to load AWS configuration")
+	return wafv2.NewFromConfig(cfg)
 }
