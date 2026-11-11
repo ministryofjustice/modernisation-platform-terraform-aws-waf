@@ -1,5 +1,16 @@
 # Terratest Unit Tests
 
+The WAF assertions use AWS SDK for Go v2 with the default credential chain and
+the `eu-west-2` region. Running the full suite applies and destroys real AWS
+resources.
+
+To check compilation without provisioning resources or calling AWS, run from
+this directory:
+
+```shell
+go test -run '^$' ./...
+```
+
 ## Initialisation
 
 On first set up of a new repository, run:
